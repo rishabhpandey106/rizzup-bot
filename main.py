@@ -8,9 +8,12 @@ import google.generativeai as genai
 from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
 import os
+from flask_cors import CORS
+
 
 app = Flask(__name__)
 load_dotenv()
+cors = CORS(app, resources={r"/*": {"origins": "https://ml2024.vercel.app"}})
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
@@ -54,5 +57,5 @@ def chat():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+# if __name__ == "__main__":
+#     app.run(host="0.0.0.0", port=8000)
