@@ -9,6 +9,7 @@ from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
 import os
 from flask_cors import CORS
+import pypdf
 
 
 app = Flask(__name__)
