@@ -14,7 +14,8 @@ import pypdf
 
 app = Flask(__name__)
 load_dotenv()
-cors = CORS(app, resources={r"/*": {"origins": "https://ml2024.vercel.app"}})
+# cors = CORS(app, resources={r"/*": {"origins": "https://ml2024.vercel.app"}})
+cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
