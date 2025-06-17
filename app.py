@@ -19,7 +19,9 @@ cors = CORS(app, resources={
         "origins": [
             "https://rishabhpandey-kappa.vercel.app",
             "https://www.rizzuppandey.me"
-        ]
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": "*"
     }
 })
 # cors = CORS(app, resources={r"/*": {"origins": "*"}})
