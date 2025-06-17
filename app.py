@@ -1,64 +1,65 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from langchain import PromptTemplate
 from langchain.chains import RetrievalQA
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-import google.generativeai as genai
 from langchain.vectorstores import Chroma
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
 import os
-from flask_cors import CORS
-import pypdf
-
 
 app = Flask(__name__)
 load_dotenv()
-# cors = CORS(app, resources={
-#     r"/*": {
-#         "origins": [
-#             "https://rishabhpandey-kappa.vercel.app",
-#             "https://www.rizzuppandey.me"
-#         ],
-#         "methods": ["GET", "POST", "OPTIONS"],
-#         "allow_headers": "*"
-#     }
-# })
-cors = CORS(app, resources={r"/*": {"origins": "https://rishabhpandey-kappa.vercel.app"}})
-# cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# Allow frontends
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://rishabhpandey-kappa.vercel.app",
+            "https://www.rizzuppandey.me"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": "*"
+    }
+})
 
-pdf_loader = PyPDFLoader("data.pdf")
-pages = pdf_loader.load_and_split()
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=10)
-context = "\n\n".join(str(p.page_content) for p in pages)
-texts = text_splitter.split_text(context)
+# Load prebuilt vector index
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001",
+    google_api_key=os.getenv("GOOGLE_API_KEY")
+)
 
-embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
-vector_index = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
-retriever = vector_index.as_retriever(search_kwargs={"k": 3})
+vector_index = Chroma(
+    persist_directory="chroma_db",
+    embedding_function=embeddings
+).as_retriever(search_kwargs={"k": 3})
 
-model = ChatGoogleGenerativeAI(model="models/gemini-2.0-flash", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.2, convert_system_message_to_human=True)
+# Gemini model
+model = ChatGoogleGenerativeAI(
+    model="models/gemini-2.0-flash",
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    temperature=0.2,
+    convert_system_message_to_human=True
+)
 
-QA_CHAIN_PROMPT = PromptTemplate.from_template(
-    """You are the candidate described in the resume below. Your job is to answer questions strictly based on this resume context only. 
-    Never attempt to answer anything outside of the resume, especially general knowledge or world-related questions. 
-    If the answer is not in the resume, respond creatively or humorously to indicate that you don't know — but never fabricate.
+# Prompt for strict resume-only answers
+QA_CHAIN_PROMPT = PromptTemplate.from_template("""
+You are the candidate described in the resume below. Your job is to answer questions strictly based on this resume context only. 
+Never attempt to answer anything outside of the resume, especially general knowledge or world-related questions. 
+If the answer is not in the resume, respond creatively or humorously to indicate that you don't know — but never fabricate.
 
-    Be brief, relevant, and resume-focused.
+Be brief, relevant, and resume-focused.
 
-    Resume:
-    {context}
+Resume:
+{context}
 
-    Question: {question}
+Question: {question}
 
-    Answer:"""
-    )
+Answer:
+""")
 
 qa_chain = RetrievalQA.from_chain_type(
-    model,
-    retriever=retriever,
+    llm=model,
+    retriever=vector_index,
     return_source_documents=True,
     chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
 )
@@ -78,9 +79,5 @@ def chat():
     try:
         result = qa_chain.invoke({"query": question})
         return jsonify({"answer": result["result"]})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=8000)
