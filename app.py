@@ -35,7 +35,7 @@ vector_index = Chroma(
 
 # Gemini model
 model = ChatGoogleGenerativeAI(
-    model="models/gemini-2.0-flash",
+    model="models/gemini-1.5-flash",
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.2,
     convert_system_message_to_human=True
@@ -77,7 +77,7 @@ def chat():
         return jsonify({"error": "No question provided"}), 400
 
     try:
-        result = qa_chain.invoke({"query": question})
+        result = qa_chain({"query": question})
         return jsonify({"answer": result["result"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
