@@ -39,6 +39,10 @@ vector_index = Chroma.from_texts(texts, embeddings).as_retriever(search_kwargs={
 
 model = ChatGoogleGenerativeAI(model="models/gemini-2.0-flash", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.2, convert_system_message_to_human=True)
 
+@app.route("/health", methods=["GET"])
+def health():
+    return "App is healthy!", 200
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json()
