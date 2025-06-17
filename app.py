@@ -14,17 +14,17 @@ import pypdf
 
 app = Flask(__name__)
 load_dotenv()
-cors = CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://rishabhpandey-kappa.vercel.app",
-            "https://www.rizzuppandey.me"
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": "*"
-    }
-})
-# cors = CORS(app, resources={r"/*": {"origins": "*"}})
+# cors = CORS(app, resources={
+#     r"/*": {
+#         "origins": [
+#             "https://rishabhpandey-kappa.vercel.app",
+#             "https://www.rizzuppandey.me"
+#         ],
+#         "methods": ["GET", "POST", "OPTIONS"],
+#         "allow_headers": "*"
+#     }
+# })
+cors = CORS(app, resources={r"/*": {"origins": "https://rishabhpandey-kappa.vercel.app"}})
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
