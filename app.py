@@ -14,12 +14,19 @@ import pypdf
 
 app = Flask(__name__)
 load_dotenv()
-cors = CORS(app, resources={r"/*": {"origins": "https://rishabhpandey-kappa.vercel.app"}})
+cors = CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://rishabhpandey-kappa.vercel.app",
+            "https://www.rizzuppandey.me"
+        ]
+    }
+})
 # cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-pdf_loader = PyPDFLoader("data1.pdf")
+pdf_loader = PyPDFLoader("data.pdf")
 pages = pdf_loader.load_and_split()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=10)
 context = "\n\n".join(str(p.page_content) for p in pages)
@@ -28,7 +35,7 @@ texts = text_splitter.split_text(context)
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
 vector_index = Chroma.from_texts(texts, embeddings).as_retriever(search_kwargs={"k": 3})
 
-model = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.2, convert_system_message_to_human=True)
+model = ChatGoogleGenerativeAI(model="models/gemini-2.0-flash", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.2, convert_system_message_to_human=True)
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -40,11 +47,20 @@ def chat():
 
     try:
         QA_CHAIN_PROMPT = PromptTemplate.from_template(
-            """You are the candidate (mentioned in your resume) answering questions based on your resume. Use the following pieces of context as your resume to answer the question at the end. If you don't know the answer don't ever mention something like "my resume doesn't include" in answer,  but tell them you don't know in humorous/creative way. Keep the answer as concise as possible.
-            {context}
-            Question: {question}
-            Helpful Answer:"""
+            """You are the candidate described in the resume below. Your job is to answer questions strictly based on this resume context only. 
+        Never attempt to answer anything outside of the resume, especially general knowledge or world-related questions. 
+        If the answer is not in the resume, respond creatively or humorously to indicate that you don't know — but never fabricate.
+
+        Be brief, relevant, and resume-focused.
+
+        Resume:
+        {context}
+
+        Question: {question}
+
+        Answer:"""
         )
+
         
         qa_chain = RetrievalQA.from_chain_type(
             model,
