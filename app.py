@@ -36,7 +36,8 @@ context = "\n\n".join(str(p.page_content) for p in pages)
 texts = text_splitter.split_text(context)
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
-vector_index = Chroma.from_texts(texts, embeddings).as_retriever(search_kwargs={"k": 3})
+vector_index = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
+retriever = vector_index.as_retriever(search_kwargs={"k": 3})
 
 model = ChatGoogleGenerativeAI(model="models/gemini-2.0-flash", google_api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.2, convert_system_message_to_human=True)
 
@@ -57,7 +58,7 @@ QA_CHAIN_PROMPT = PromptTemplate.from_template(
 
 qa_chain = RetrievalQA.from_chain_type(
     model,
-    retriever=vector_index,
+    retriever=retriever,
     return_source_documents=True,
     chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
 )
