@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+import tempfile
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from langchain import PromptTemplate
 from langchain.chains import RetrievalQA
@@ -10,13 +11,32 @@ from dotenv import load_dotenv
 import os
 import google.generativeai as genai
 import pypdf
+import threading
+import time
+from elevenlabs import ElevenLabs
+load_dotenv()
+
+client = ElevenLabs(
+    api_key=os.getenv("XI_API_KEY"),
+)
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://rishabhpandey-kappa.vercel.app",
     "https://www.rizzuppandey.me"
 ]}})
-load_dotenv()
+
+def delete_file_later(filepath, delay=60):
+    def delayed_delete():
+        time.sleep(delay)
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                print(f"Deleted audio file: {filepath}")
+        except Exception as e:
+            print(f"Error deleting file {filepath}: {e}")
+    threading.Thread(target=delayed_delete, daemon=True).start()
+
 
 pdf_loader = PyPDFLoader("data.pdf")
 pages = pdf_loader.load_and_split()
@@ -70,7 +90,23 @@ def chat():
 
     try:
         result = qa_chain.invoke({"query": question})
-        return jsonify({"answer": result["result"]})
+        answer_text = result["result"]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3", dir="static") as temp_audio:
+            audio_filename = os.path.basename(temp_audio.name)
+            audio_path = os.path.join("static", audio_filename)
+            audio_stream = client.text_to_speech.stream(
+                voice_id="Z55vjGJIfg7PlYv2c1k6",
+                text=answer_text,
+                model_id="eleven_multilingual_v2",
+                output_format="mp3_44100_128"
+            )
+            for chunk in audio_stream:
+                temp_audio.write(chunk)
+            delete_file_later(audio_path, delay=60)
+        return jsonify({
+            "answer": answer_text,
+            "audio_url": f"/static/{audio_filename}"
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
