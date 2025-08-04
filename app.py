@@ -25,8 +25,7 @@ client = SarvamAI(
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://rishabhpandey-kappa.vercel.app",
-    "https://www.rizzuppandey.me",
-    "http://localhost:3000"
+    "https://www.rizzuppandey.me"
 ]}})
 
 def delete_file_later(filepath, delay=60):
