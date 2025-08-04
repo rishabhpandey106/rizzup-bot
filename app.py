@@ -1,3 +1,4 @@
+import base64
 import tempfile
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -15,15 +16,17 @@ import threading
 import time
 from elevenlabs import ElevenLabs
 load_dotenv()
+from sarvamai import SarvamAI
 
-client = ElevenLabs(
-    api_key=os.getenv("XI_API_KEY"),
+client = SarvamAI(
+    api_subscription_key=os.getenv("SARVAM_KEY"),
 )
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": [
     "https://rishabhpandey-kappa.vercel.app",
-    "https://www.rizzuppandey.me"
+    "https://www.rizzuppandey.me",
+    "http://localhost:3000"
 ]}})
 
 def delete_file_later(filepath, delay=60):
@@ -91,24 +94,32 @@ def chat():
     try:
         result = qa_chain.invoke({"query": question})
         answer_text = result["result"]
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3", dir="static") as temp_audio:
-            audio_filename = os.path.basename(temp_audio.name)
-            audio_path = os.path.join("static", audio_filename)
-            audio_stream = client.text_to_speech.stream(
-                voice_id="Z55vjGJIfg7PlYv2c1k6",
-                text=answer_text,
-                model_id="eleven_multilingual_v2",
-                output_format="mp3_44100_128"
+        audio_stream = client.text_to_speech.convert(
+            text=answer_text,
+            target_language_code="hi-IN",
+            speaker="karun",
+            pitch=0,
+            pace=1,
+            loudness=1,
+            speech_sample_rate=22050,
+            enable_preprocessing=True,
+            model="bulbul:v2"
             )
-            for chunk in audio_stream:
-                temp_audio.write(chunk)
-            delete_file_later(audio_path, delay=60)
+        
+        audio_base64 = "".join(audio_stream.audios)
+        audio_bytes = base64.b64decode(audio_base64)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3", dir="static") as temp_audio:
+            temp_audio.write(audio_bytes)
+            temp_audio_path = temp_audio.name
+            temp_audio_name = os.path.basename(temp_audio_path)
+
+        # Schedule file deletion
+        delete_file_later(temp_audio_path, delay=60)
+        audio_url = f"/static/{temp_audio_name}"
         return jsonify({
             "answer": answer_text,
-            "audio_url": f"/static/{audio_filename}"
+            "audio_url": audio_url
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0", port=8000)
