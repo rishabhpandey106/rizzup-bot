@@ -14,7 +14,6 @@ import google.generativeai as genai
 import pypdf
 import threading
 import time
-from elevenlabs import ElevenLabs
 load_dotenv()
 from sarvamai import SarvamAI
 
