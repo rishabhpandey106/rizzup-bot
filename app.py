@@ -45,7 +45,7 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100
 texts = text_splitter.split_text("\n\n".join([p.page_content for p in pages]))
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
+embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 vector_index = FAISS.from_texts(texts, embeddings).as_retriever(search_kwargs={"k": 5})
 
